@@ -1,0 +1,204 @@
+{ | procedimiento PASADA_1          Local de asm |
+  | Version: 3                  Creado: 17/11/87 |
+  |                        Ultima mod.: 25/11/87 |
+  |                                              |
+  |                                              | }
+
+{$I-}
+reset(fuente);
+{$I+}
+checkio;
+
+loc        := locbot;
+max        := locbot;
+min        := loctop;
+free       := loctop;
+full[DTA]  := false;
+full[COD]  := false;
+modo       := COD;
+fuente_end := false;
+linea_cnt  := 0;
+code_off   := 0;
+usad[COD]  := 0;
+usad[DTA]  := 0;
+
+creaar('MOR',0,$784,A08);
+creaar('TMIN',0,$7F8,A11);
+creaar('EXIN',0,$7FA,A11);
+creaar('SWIN',0,$7FC,A11);
+creaar('RST',0,$7FE,A11);
+
+while not(fuente_end) and not(eof(fuente)) do
+begin
+  readln(fuente,linea);
+  linea_cnt := linea_cnt+1;
+  WRITE('L',LINEA_CNT:4,#13);
+  code_off  := 0;
+  ana_lin(linea);
+  if not(label_b or opera_b or argum_b or label_e or opera_e or argum_e)
+    then goto LOOP;
+  if not(opera_b) then begin                { Revisar esta condicion }
+                         writeln('err interno en P1.P1');
+                         halt;
+                       end;
+  if opera_e then begin
+                    error(3,true,error_col);
+                    goto LOOP;
+                  end;
+  if label_e then begin
+                    error(4,false,error_col);
+                    label_b := false;
+                  end;
+  case nemo_typ of
+    RME,
+    RMO: if check([COD],1,true,1,1)
+           then begin
+                  argu_dir := ana_arg(nemo_typ);
+                  case argu_dir of
+                    SOVF: error(22,false,error_col);
+                    LOVF: error(19,false,error_col);
+                    NOVF: error(16,false,dato_err);
+                    AERR: error(17,false,dato_err);
+                    TERR: error(35,false,error_col);
+                    MOVF: error(11,true,error_col);
+                    else if nemo_typ = RME
+                           then
+                             if (nemo in [STA,STX,JMP,JSR]) and (argu_dir = INM)
+                               then error(35,false,argum[1].col)
+                               else
+                                 begin
+                                   code_arr[loc[COD]] :=
+                                   nemo_dat[nemo].rme[argu_dir];
+                                 end
+                           else
+                             begin
+                               code_arr[loc[COD]] :=
+                               nemo_dat[nemo].rmo[argu_dir];
+                             end;
+                  end;{case}
+                  actualiza;
+                end;
+    BCH: if check([COD],2,true,1,1)
+           then begin
+                  code_arr[loc[COD]] := nemo_dat[nemo].op;
+                  ana_off(1,1);
+                  actualiza;
+                end;
+    BTB: if check([COD],3,true,3,3)
+           then begin
+                  ana_bit;
+                  ana_dir;
+                  ana_off(3,2);
+                  actualiza;
+                end;
+    BSC: if check([COD],2,true,2,2)
+           then begin
+                  ana_bit;
+                  ana_dir;
+                  actualiza;
+                end;
+    CTR: if check([COD],1,false,0,0)
+           then begin
+                  code_arr[loc[COD]] := nemo_dat[nemo].op;
+                  actualiza;
+                end;
+    PSD: case nemo of
+           DSEG: if check([DTA,COD],0,false,0,0) then modo := DTA;
+           CSEG: if check([DTA,COD],0,false,0,0) then modo := COD;
+            ORG: if check([DTA,COD],0,true,1,1)
+                   then
+                     begin
+                       case ana_dat(1,1) of
+                         CHA,N08,N11,E08,
+                         E11: if (dato_val > loctop[modo]) or
+                                 (dato_val < locbot[modo])
+                                then error(23,false,argum[1].col)
+                                else loc[modo] := dato_val;
+                         N16,
+                         E16: error(19,false,argum[1].col);
+                         EID: error(24,false,argum[1].col);
+                         OVF: error(16,false,dato_err);
+                         ERR: error(17,false,dato_err);
+                       end;{case}
+                       actualiza;
+                     end;
+            RMB: if modo = COD
+                   then ana_rmb
+                   else if check([DTA],1,true,0,0) then actualiza;
+            RMW: if modo = COD
+                   then begin
+                          if check([COD],2,true,0,1) { Un argumento no obligatorio }
+                            then
+                              begin
+                                if argum_b   { hay argumento ? }
+                                  then
+                                    case ana_dat(1,1) of
+                                      CHA,N08,N11,N16,E08,E11,
+                                      E16: begin
+                                             code_arr[loc[COD]  ] := hi(dato_val);
+                                             code_arr[loc[COD]+1] := lo(dato_val);
+                                           end;
+                                      EID: creaar(dato_nom,argum[1].col,loc[COD],A16);
+                                      OVF: error(16,false,dato_err);
+                                      ERR: error(17,false,dato_err);
+                                    end;{case}
+                                actualiza;
+                              end;
+                        end
+                   else if check([DTA],2,false,0,0) then actualiza;
+            RMS: if check([DTA,COD],0,true,1,1)
+                   then begin
+                          case ana_dat(1,1) of
+                            CHA,N08,N11,E08,
+                            E11: begin
+                                   if label_b
+                                     then
+                                       if dato_val = 0
+                                         then error(26,false,argum[1].col)
+                                         else if not(creaet(label_,loc[modo]))
+                                                then error(6,false,label_c);
+                                   if dato_val <= free[modo]
+                                     then code_off := dato_val
+                                     else error(11,true,argum[1].col);
+                                 end;
+                            N16,
+                            E16: error(11,true,argum[1].col);
+                            EID: error(24,true,argum[1].col);
+                            OVF: error(16,true,dato_err);
+                            ERR: error(17,true,dato_err);
+                          end;{case}
+                          actualiza;
+                        end;
+            EQU: if check([DTA,COD],0,true,1,1)
+                   then if label_b
+                          then if creaet(label_,0)
+                                 then
+                                   begin
+                                     d_punt := e_punt;   { salva el puntero }
+                                     case ana_dat(1,1) of
+                                       CHA,N08,N11,N16,E08,E11,
+                                       E16: begin
+                                              d_punt^.dat := dato_val;
+                                              if (dato_val < 0) or
+                                                 (dato_val > addr_top)
+                                                then d_punt^.typ := E16
+                                                else if dato_val > dire_top
+                                                       then d_punt^.typ := E11
+                                                       else d_punt^.typ := E08;
+                                            end;
+                                       EID: creaar(dato_nom,argum[1].col,0,LAB);
+                                       OVF: error(16,false,dato_err);
+                                       ERR: error(17,false,dato_err);
+                                     end;{case}
+                                   end
+                                 else error(6,true,label_c)
+                          else error(25,false,opera_c);
+           END_: fuente_end := true;
+         end;{case nemo}
+{   TOP:;                             Eliminar }
+  end;{case nemo_typ}
+  LOOP:
+end;
+if not(fuente_end) then error(1,false,1);
+close(fuente);
+

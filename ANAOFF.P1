@@ -1,0 +1,31 @@
+{ | procedure ANA_OFF()        Local de pasada_1 |
+  | Version: 1                  Creado: 18/11/87 |
+  |                         Ultima mod.:23/11/87 |
+  |                                              |
+  | Realiza el analisis del paramentro           |
+  | especificado en argu_n y coloca el resultado |
+  | o genera un argumento REL con un offset con  |
+  | respecto a loc[COD] especificado en off_p.   |
+  | Genera: Error 16 = parametro OVF.            |
+  |         Error 17 = parametro ERR.            |
+  |         Error 20 = offset fuera de rango     |
+  |         Error 19 = No addr rango             |
+  |                                              | }
+
+procedure ana_off(argu_n: byte;off_p: byte);
+begin
+  case ana_dat(argu_n,1) of
+    CHA,
+    N08,
+    N11: if offset(loc[COD]+1,dato_val)
+           then code_arr[loc[COD]+off_p] := offset_dat
+           else error(20,false,argum[argu_n].col);
+    E08,
+    E11,
+    E16,
+    EID: creaar(dato_nom,argum[argu_n].col,loc[COD]+off_p,REL);
+    N16: error(19,false,argum[argu_n].col);
+    OVF: error(16,false,dato_err);
+    ERR: error(17,false,dato_err);
+  end;{case}
+end;{ana_off}

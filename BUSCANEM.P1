@@ -1,0 +1,13 @@
+{>> funcion BUSCANEMO  <<}
+
+procedure buscanemo(buscado: nemo_nom);
+begin
+  nemo     := LDA;
+  nemo_typ := RME;
+  while (nemo_dat[nemo].n <> buscado) and (nemo <> NEX) do
+    begin
+      nemo     := succ(nemo);
+      nemo_typ := nemo_dat[nemo].t
+    end;
+end;
+

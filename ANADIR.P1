@@ -1,0 +1,29 @@
+{ | procedure ANA_DIR          Local de pasada_1 |
+  | Version: 1                  Creado: 19/11/87 |
+  |                         Ultima mod.:23/11/87 |
+  |                                              |
+  | Realiza el analisis del argum[2].dat como    |
+  | argumento directo y coloca el resultado o    |
+  | genera un argumento DIR con un offset con    |
+  | respecto a loc[COD] de 1.                    |
+  | Genera: Error 16 = parametro OVF.            |
+  |         Error 17 = parametro ERR.            |
+  |         Error 22 = directo fuera de rango    |
+  |         Error 19 = No addr rango.            |
+  |                                              | }
+
+procedure ana_dir;
+begin
+  case ana_dat(2,1) of
+    CHA,
+    N08: code_arr[loc[COD]+1] := dato_val;
+    E08,
+    E11,
+    E16,
+    EID: creaar(dato_nom,argum[2].col,loc[COD]+1,A08);
+    N11: error(22,false,argum[2].col);
+    N16: error(19,false,argum[2].col);
+    OVF: error(16,false,dato_err);
+    ERR: error(17,false,dato_err);
+  end;{case}
+end;{ana_dir}

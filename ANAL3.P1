@@ -1,0 +1,261 @@
+{ | procedimiento ANA_LIN()    Local de pasada_1 |
+  | Version: 3                  Creado: 17/11/87 |
+  |                        Ultima mod.: 25/11/87 |
+  |                                              |
+  | Analiza la linea ,setea los flags y extrae   |
+  | los Label's, operandos y argumentos.         |
+  |                                              | }
+
+procedure ana_lin(linea: lin);
+label
+  TEST;
+var
+  ch        :char;
+  elemento  : lin;
+  elementos,
+  prin,fin,
+  p1,p2     : byte;
+  pp,dp,
+  linea_fin : boolean;
+
+{ | funcion IGNORA()         Local de ana_lin.p1 |
+  | Version:1                   Creado: 17/11/87 |
+  |                         Ultima mod.:17/11/87 |
+  |                                              |
+  | Retorna la poscision de la primera coinciden_|
+  | cia entre el caracter inicial y los restantes|
+  | si no se encontrase se inserta uno en        |
+  | la ultima poscision de la linea.             |
+  | Requiere de una variable externa Linea: lin  |
+  |                                              | }
+
+function ignora(com :byte ):byte;
+begin
+  ch := linea[com];
+  repeat com := com+1 until (linea[com] = ch) or (com > length(linea));
+  if com > length(linea)
+    then begin
+           ignora       := com-1;
+           linea[com-1] := ch;
+         end
+    else ignora := com;
+end;
+
+{ | funcion CONFORMAR()      Local de ana_lin.p1 |
+  | Version: 2             Ultima mod.: 16/11/87 |
+  |                                              |
+  | Convierte minusculas a mayusculas y elimina  |
+  | los comentarios a partir de ';'. Tambien     |
+  | cuenta la cantidad de elementos validos de   |
+  | la linea.                                    |
+  |                                              | }
+
+function conformar(linea :lin):lin;
+var
+  oldch : char;
+begin
+  p1      := 1;
+  oldch     := ' ';
+  elementos := 0;
+  while length(linea) >= p1 do
+  begin
+    if (oldch in tabu_set) and  not((linea[p1] in tabu_set) or (linea[p1] = ';'))
+      then elementos := elementos+1;
+    oldch := linea[p1];
+
+    case linea[p1] of
+      '"',#39: p1 := ignora(p1);
+      ';'    : delete(linea,p1,length(linea)-p1+1);
+      else     linea[p1] := upcase(linea[p1]);
+    end;{case linea[p1]}
+    p1 := p1+1;
+  end;
+  conformar := linea;
+end;
+
+{ | funcion BARR             Local de ana_lin.p1 |
+  | Version: 1                  Creado: 17/11/87 |
+  |                         Ultima mod.:17/11/87 |
+  |                                              |
+  | Sel = true: Retorna la poscion de la primera |
+  |             coincidecia entre linea y        |
+  |             buscados.                        |
+  | Sel = false:Retorna la posicion de la primera|
+  |             diferencia entre linea y buscados|
+  |                                              | }
+
+function barr(buscados: conj;sel: boolean;com: byte): byte;
+begin
+  while (sel xor (linea[com] in buscados)) and (com <= length(linea)) do
+    begin
+      if linea[com] in ['"',''''] then com := ignora(com);
+      com := com +1;
+    end;
+  barr      := com;
+  linea_fin := com > length(linea);
+end;
+
+{ | funcion ANLZ()           Local de ana_lin.p1 |
+  | Version:1                   Creado: 16/11/87 |
+  |                         Ultima mod.:17/11/87 |
+  |                                              |
+  | Actualiza las variables externas:            |
+  | prin,fin,error_col,elemento                  |
+  | Retorna:  1: Linea vacia.                    |
+  |           2: Ok.                             |
+  |           3: Encontro pero hay error.        |
+  |           4: Encontro otra cosa.             |
+  |                                              | }
+
+function anlz(linea: lin;com: byte;buscados: conj;validos: conj): byte;
+var
+  result:    byte;
+begin
+  anlz := 1;
+  prin := barr(tabu_set,false,com);
+  fin  := prin;
+  if linea_fin then exit;
+  if linea[prin] in buscados
+    then begin
+           anlz     := 2;
+           result   := 3;
+           fin      := barr(validos,false,prin);
+           elemento := copy(linea,prin,fin-prin);
+         end
+    else result := 4;
+  if linea_fin then exit;
+  if not(linea[fin] in tabu_set)
+    then begin
+           anlz := result;
+           error_col := fin;
+           fin       := barr(tabu_set,true,error_col);
+         end;
+end;{anlz}
+
+{>> Comienzo de ANA_LIN <<}
+
+begin
+  label_  := '';
+  opera   := '';              { Eliminar estos 5 }
+  argum[1].dat   := '';
+  argum[2].dat   := '';
+  argum[3].dat   := '';
+  label_b := false;
+  label_e := false;
+  opera_b := false;
+  opera_e := false;
+  argum_b := false;
+  argum_e := false;
+  fin     := 1;
+
+  linea   := conformar(linea);
+
+  if elementos > 1
+  then case anlz(linea,fin,label_set1,label_set2) of
+         1: exit;
+         2: begin
+              buscanemo(elemento);
+              if nemo = NEX
+                then begin
+                       label_b := true;
+                       label_c := prin;
+                       label_  := elemento;
+                       if (elemento = 'X') or (elemento = 'A')
+                         then begin
+                                label_e   := true;
+                                error_col := prin;
+                              end;
+                     end
+                else if elementos < 3
+                       then fin := prin
+                       else begin
+                              label_e   := true;
+                              error_col := prin;
+                            end;
+            end;
+         3,
+         4: begin
+              label_b := true;
+              label_e := true;
+            end;
+       end;{case}
+
+case anlz(linea,fin,opera_set,opera_set) of
+    1: exit;
+    2: begin
+         opera_b := true;
+         opera_c := prin;                  { colisiona con }
+         opera   := elemento;
+         buscanemo(elemento);
+         if nemo = NEX
+           then begin
+                  opera_e   := true;
+                  error_col := prin;       { este }
+                end;
+       end;
+    3,
+    4: begin
+         opera_b := true;
+         opera_c := prin;                  { y este ? }
+         opera_e := true;
+       end;
+  end;{case}
+
+  if ((elementos = 2) and not(label_b)) or (elementos > 2)
+
+  then case anlz(linea,fin,argu_set,[#0..#$FF]) of
+         1: writeln('Error interno en ANAL2.P1');
+         2: begin
+              argum_b   := true;
+              argum_num := 0;
+              pp        := false;
+              dp        := false;
+              p1        := prin;
+              repeat
+                if linea[p1] in tabu_set
+                  then begin
+                         p1 := barr(tabu_set,false,p1);
+                         goto TEST;
+                       end;
+                if linea[p1] in argu_set
+                  then if pp
+                         then begin
+                                argum_e   := true;
+                                goto TEST;
+                              end
+                         else begin
+                                pp := true;
+                                dp := false;
+                                p2 := p1;
+                                p1 := barr(argu_set,false,p1);
+                                argum_num            := argum_num+1;
+                                argum[argum_num].dat := copy(linea,p2,p1-p2);
+                                argum[argum_num].col := p2;
+                                goto TEST;
+                              end;
+                if linea[p1] = ','
+                  then if dp
+                         then begin
+                                argum_e   := true;
+                                goto TEST;
+                              end
+                         else begin
+                                dp := true;
+                                pp := false;
+                                p1 := p1+1;
+                                goto TEST;
+                              end;
+                if not(linea[p1] in tabu_set+argu_set+[','])
+                  then argum_e := true;
+              TEST:
+              until (p1 >= fin) or argum_e;
+              if argum_e or dp then error_col := p1;
+            end;{2:}
+         3,
+         4: begin
+              argum_b := true;
+              argum_e := true;
+            end;
+       end;{case}
+end;{anlz}
+

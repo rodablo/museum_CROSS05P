@@ -1,0 +1,42 @@
+procedure ana_rmb;
+var
+  loop   : byte;
+  offset : byte;
+begin
+  if check([COD],1,true,0,8)
+    then begin
+           if argum_b
+             then begin
+                    offset := 0;
+                    loop   := 1;
+                    while (loop <= argum_num) and (offset < free[COD]) do
+                      begin
+                        case ana_dat(loop,1) of
+                          CHA: ;
+                          N08: begin
+                                 code_arr[loc[COD]+offset] := dato_val;
+                                 offset := offset+1;
+                               end;
+                          E08,E11,E16,
+                          EID: begin
+{ EL 15/4/88 SE CORRIGIO ESTA INVERSION              ESTO     CON    ESTO        }
+                                 creaar(dato_nom,argum[loop].col,loc[COD]+offset,A08);
+                                 offset := offset+1;
+                               end;
+                          N11,
+                          N16: error(22,false,argum[loop].col);
+                          OVF: error(16,false,dato_err);
+                          ERR: error(17,false,dato_err);
+                        end;{case}
+                        loop := loop+1;
+                      end;
+                    if loop <= argum_num
+                      then begin
+                             error(11,true,argum[loop].col);
+                             {full[COD] := true;                }
+                           end;
+                    code_off := offset;
+                  end;
+           actualiza;
+         end;
+end;

@@ -1,0 +1,20 @@
+{ | procedure ACTUALIZA;       Local de pasada_1 |
+  | Version: 1                  Creado: 20/11/87 |
+  |                         Ultima mod.:20/11/87 |
+  |                                              |
+  | Actualiza el loc[] y otras variables         |
+  |                                              | }
+
+procedure actualiza;
+begin
+  if loc[modo] < min[modo] then min[modo] := loc[modo];
+  if full[modo] then if modo = DTA then exit
+                                   else begin
+                                          fuente_end := true;
+                                          exit;
+                                        end;
+  loc[modo]  := loc[modo]  + code_off;
+  if (loc[modo] > max[modo]) and (code_off > 0) then max[modo] := loc[modo]-1;
+  usad[modo] := usad[modo] + code_off;
+  free[modo] := loctop[modo]+1 - loc[modo];
+end;

@@ -1,0 +1,187 @@
+label
+  LOOP;
+type
+
+{>> para el manejo de opcodes y nemos <<}
+
+  instr_set =
+  {>> RME }  (LDA,LDX,STA,STX,ADD,ADC,SUB,SBC,AND_,ORA,EOR,CMP,CPX,BIT_,JMP,JSR,
+  {>> RMO }   INC,DEC,CLR,COM,NEG,ROL,ROR,LSL,LSR,ASR,TST,
+  {>> BCH }   BRA,BRN,BHI,BLS,BCC,BHS,BCS,BLO,BNE,BEQ,BHCC,BHCS,BPL,BMI,BMC,BMS,BIL,BIH,BSR,
+  {>> BTB }   BRSET,BRCLR,
+  {>> BSC }   BSET,BCLR,
+  {>> CTR }   TAX,TXA,SEC,CLC,SEI,CLI,SWI,RTS,RTI,RSP,NOP,
+  {>> PSD }   DSEG,CSEG,ORG,EQU,RMB,RMW,RMS,END_,NEX);
+
+  instr_typ = (RME,            {>> Register MEmory     }
+               RMO,            {>> Read Modify Write   }
+               BCH,            {>> BranCH              }
+               BTB,            {>> Bit Test y Branch   }
+               BSC,            {>> Bit Set Clear       }
+               CTR,            {>> ConTRol             }
+               PSD,            {>> PSeuDo comando      }
+               TOP);           {>> Inexistente        Eliminar }
+
+  instr_dir = (IHA,            {>> Inherente al A      }
+               IHX,            {>> Inherente al X      }
+               DIR,            {>> Directo             }
+               X00,            {>> Indexado sin offset }
+               X08,            {>> Indexado  8 bit     }
+               X16,            {>> Indexado 16 bit     }
+               EXT,            {>> Extendido           }
+               INM,            {>> Inmediato           }
+               SOVF,           {>> Overflow en 8  bits }
+               LOVF,           {>> Overflow en 11 bits }
+               NOVF,           {>> Overflow en 16 bits }
+               MOVF,           {>> NO hay lugar        }
+               TERR,           {>> Dirmodo no valido   }
+               AERR);          {>> Error en el argumento }
+
+  dir_rme   = DIR..INM;        {>> Validos para RME ( ver STA,STX,JMP,JSR ) }
+  dir_rmo   = IHA..X08;        {>> Validos para RMO    }
+
+  instr_rec = record
+                n :string[5];
+                case t: instr_typ of
+                  RME: (rme: array[dir_rme] of byte);
+                  RMO: (rmo: array[dir_rmo] of byte);
+                  BCH,
+                  BTB,
+                  BSC,
+                  CTR: (op:  byte);
+                  PSD,
+                  TOP: ();
+              end;
+
+  instr_arr = array[instr_set] of instr_rec;
+
+  nemo_nom  = string[5];
+
+{>> para el manejo de lineas <<}
+
+  lin       = string[132];
+  conj      = set of char;
+  argu_rec2 = record
+                col: byte;    {>> Comienzo respecto al principio de la linea }
+                dat: lin;     {>> subargumento }
+              end;
+
+{>>>> COMIENZO DEL AREA DE CONSTANTES DE PASADA_1 <<<<}
+
+{>> para el manejo de opcodes y nemos <<}
+
+const
+  nemo_dat :instr_arr = (
+
+  (n:'LDA';t:RME;rme:($B6,$F6,$E6,$D6,$C6,$A6)),
+  (n:'LDX';t:RME;rme:($BE,$FE,$EE,$DE,$CE,$AE)),
+
+  (n:'STA';t:RME;rme:($B7,$F7,$E7,$D7,$C7,$00)),    {>> NO tiene INM }
+  (n:'STX';t:RME;rme:($BF,$FF,$EF,$DF,$CF,$00)),    {>> NO tiene INM }
+
+  (n:'ADD';t:RME;rme:($BB,$FB,$EB,$DB,$CB,$AB)),
+  (n:'ADC';t:RME;rme:($B9,$F9,$E9,$D9,$C9,$A9)),
+  (n:'SUB';t:RME;rme:($B0,$F0,$E0,$D0,$C0,$A0)),
+  (n:'SBC';t:RME;rme:($B2,$F2,$E2,$D2,$C2,$A2)),
+  (n:'AND';t:RME;rme:($B4,$F4,$E4,$D4,$C4,$A4)),
+  (n:'ORA';t:RME;rme:($BA,$FA,$EA,$DA,$CA,$AA)),
+  (n:'EOR';t:RME;rme:($B8,$F8,$E8,$D8,$C8,$A8)),
+  (n:'CMP';t:RME;rme:($B1,$F1,$E1,$D1,$C1,$A1)),
+  (n:'CPX';t:RME;rme:($B3,$F3,$E3,$D3,$C3,$A3)),
+  (n:'BIT';t:RME;rme:($B5,$F5,$E5,$D5,$C5,$A5)),
+
+  (n:'JMP';t:RME;rme:($BC,$FC,$EC,$DC,$CC,$00)),    {>> NO tiene INM }
+  (n:'JSR';t:RME;rme:($BD,$FD,$ED,$DD,$CD,$00)),    {>> NO tiene INM }
+
+  (n:'INC';t:RMO;rmo:($4C,$5C,$3C,$7C,$6C)),
+  (n:'DEC';t:RMO;rmo:($4A,$5A,$3A,$7A,$6A)),
+  (n:'CLR';t:RMO;rmo:($4F,$5F,$3F,$7F,$6F)),
+  (n:'COM';t:RMO;rmo:($43,$53,$33,$73,$63)),
+  (n:'NEG';t:RMO;rmo:($40,$50,$30,$70,$60)),
+  (n:'ROL';t:RMO;rmo:($49,$59,$39,$79,$69)),
+  (n:'ROR';t:RMO;rmo:($46,$56,$36,$76,$66)),
+  (n:'LSL';t:RMO;rmo:($48,$58,$38,$78,$68)),
+  (n:'LSR';t:RMO;rmo:($44,$54,$34,$74,$64)),
+  (n:'ASR';t:RMO;rmo:($47,$57,$37,$77,$67)),
+  (n:'TST';t:RMO;rmo:($4D,$5D,$3D,$7D,$6D)),
+
+  (n:'BRA' ;t:BCH;op:$20),(n:'BRN' ;t:BCH;op:$21),(n:'BHI' ;t:BCH;op:$22),
+  (n:'BLS' ;t:BCH;op:$23),(n:'BCC' ;t:BCH;op:$24),(n:'BHS' ;t:BCH;op:$24),
+  (n:'BCS' ;t:BCH;op:$25),(n:'BLO' ;t:BCH;op:$25),(n:'BNE' ;t:BCH;op:$26),
+  (n:'BEQ' ;t:BCH;op:$27),(n:'BHCC';t:BCH;op:$28),(n:'BHCS';t:BCH;op:$29),
+  (n:'BPL' ;t:BCH;op:$2A),(n:'BMI' ;t:BCH;op:$2B),(n:'BMC' ;t:BCH;op:$2C),
+  (n:'BMS' ;t:BCH;op:$2D),(n:'BIL' ;t:BCH;op:$2E),(n:'BIH' ;t:BCH;op:$2F),
+  (n:'BSR' ;t:BCH;op:$AD),
+
+  (n:'BRSET';t:BTB;op:$00),(n:'BRCLR';t:BTB;op:$01),
+  (n:'BSET' ;t:BSC;op:$10),(n:'BCLR' ;t:BSC;op:$11),
+
+  (n:'TAX' ;t:CTR;op:$97),(n:'TXA' ;t:CTR;op:$9F),(n:'SEC' ;t:CTR;op:$99),
+  (n:'CLC' ;t:CTR;op:$98),(n:'SEI' ;t:CTR;op:$9B),(n:'CLI' ;t:CTR;op:$9A),
+  (n:'SWI' ;t:CTR;op:$83),(n:'RTS' ;t:CTR;op:$81),(n:'RTI' ;t:CTR;op:$80),
+  (n:'RSP' ;t:CTR;op:$9C),(n:'NOP' ;t:CTR;op:$9D),
+
+  (n:'DSEG';t:PSD),(n:'CSEG';t:PSD),
+  (n:'ORG' ;t:PSD),(n:'EQU' ;t:PSD),
+  (n:'RMB' ;t:PSD),(n:'RMW' ;t:PSD),
+  (n:'RMS' ;t:PSD),(n:'END' ;t:PSD),
+  (n:''    ;t:TOP)
+
+   ); {>> fin de nemo_dat <<}
+
+{>> para manejo de topes <<}
+
+loctop : mode_arr = ($7F,$783);
+locbot : mode_arr = ($0,$80);
+
+{>> Constantes para el manejo de lineas <<}
+
+  deci_set   :conj = ['0'..'9'];
+  hexa_set   :conj = ['0'..'9','A'..'F'];
+
+  label_set1 :conj = ['_','@','?','!','A'..'Z'];
+  label_set2 :conj = ['_','@','?','!','A'..'Z','0'..'9'];
+  opera_set  :conj = ['A'..'Z'];
+  argu_set   :conj = ['_','@','?','!','A'..'Z','0'..'9','#','^','$','%','"',#39];
+  tabu_set   :conj = [#0..' '];
+
+{>>>> COMIENZO DEL AREA DE VARIABLES  DE PASADA_1 <<<<}
+
+var
+
+{>> para el manejo de lineas <<}
+
+  linea     : lin;
+
+  label_    : etiq_nom;
+  label_b ,
+  label_e   : boolean;
+  label_c   : byte;
+
+  opera     : nemo_nom;
+  opera_b ,
+  opera_e   : boolean;
+  opera_c   : byte;
+
+  argum     : array[1..8] of argu_rec2;
+  argum_num : byte;
+  argum_b ,
+  argum_e   : boolean;
+
+  error_col :byte; {    Eliminar }
+
+{>> para la seleccion dirmodo de argumentos <<}
+
+  argu_dir : instr_dir;
+
+{>> para el manejo de datos <<}
+
+  dato_nom  : etiq_nom;
+  dato_val  : integer;
+  dato_err  : integer;
+
+{>> para el manejo de nemos <<}
+
+  nemo        : instr_set;
+  nemo_typ    : instr_typ;
+

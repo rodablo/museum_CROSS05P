@@ -1,0 +1,40 @@
+{ | funcion CREAET             Local de pasada_1 |
+  | Version: 1              Ultima mod.:23/11/87 |
+  |                                              |
+  | Crea una label de nombre (nombre), si el     |
+  | nombre ya estuviera definido previamente     |
+  | retorna false y no crea,caso contrario retor_|
+  | na true.                                     |
+  |                                              | }
+
+function creaet(nombre :etiq_nom;valor :addr_val):boolean;
+begin
+  creaet := false;
+  if e_base = NIL
+    then begin
+           new(e_punt);
+           e_base := e_punt
+         end
+    else begin
+           if buscaet(nombre,false)
+             then exit
+             else begin
+                    new(e_punt);
+                    e_last^.prx := e_punt; {>>>> a_last se := en BUSCAET }
+                  end;
+         end;
+  if (valor < 0) or (valor > addr_top)
+    then e_punt^.typ := E16
+    else if valor > dire_top
+           then e_punt^.typ := E11
+           else e_punt^.typ := E08;
+  with e_punt^ do
+  begin
+    nom := nombre;
+    dat := valor;
+    sta := true; {Si es creado por un EQU con argumento LABEL,el EQU lo cambia}
+{   lin := linea_cnt;          }
+    prx := NIL;
+  end;
+  creaet := true;
+end;

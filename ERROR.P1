@@ -1,0 +1,20 @@
+{ | procedimiento ERROR        Local de pasada_1 |
+  | Version: 1              Ultima mod.:18/11/87 |
+  |                                              |
+  | Imprime el codigo de error y varios datos    |
+  |                                              | }
+
+procedure error(error_cod: byte;fatal: boolean;columna: byte);
+var
+  tipo: char;
+begin
+ if fatal then begin
+                 error_fat := error_fat+1;
+                 tipo      := 'F';
+               end
+          else begin
+                 error_war := error_war+1;
+                 tipo      := 'E';
+               end;
+ writeln(tipo,error_cod:2,'[',linea_cnt:4,'/',columna:3,']',linea);
+end;

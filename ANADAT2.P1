@@ -1,0 +1,122 @@
+{ | funcion ANA_DAT            Local de pasada_1 |
+  | Version: 1                  Creado: 18/11/87 |
+  |                        Ultima mod.: 20/11/87 |
+  |                                              |
+  | Analiza el argum[argu_n] y retorna el tipo y |
+  | actualiza el valor en dato_val y si fuese    |
+  | label el nombre en dato_nom.                 |
+  | Si ubiese un error retorna la poscision en   |
+  | dato_err (respecto del comienzo de la linea )|
+  | el 20/11 se agrego el true en creaet.        |
+  |                                              | }
+
+function  ana_dat(argu_n:byte;com: byte):dato_set;
+var
+  set_err,bit_1 : boolean;
+  bit_p,bit_l   : byte;
+
+{ | funcion SET_CHK()        Local de ana_dat.p1 |
+  | Version: 1                  Creado: 18/11/87 |
+  |                        Ultima mod.: 18/11/87 |
+  |                                              |
+  | Chequea que los caracteres del dato a partir |
+  | de com pertenescan a validos, retorna true   |
+  | si es asi, Caso contrario retorna false y la |
+  | poscision del la primera diferencia en la    |
+  | variable externa dato_err.                   |
+  |                                              | }
+
+function set_chk(argu_n:byte;com: byte;validos: conj):boolean;
+begin
+  set_chk  := true;
+  set_err  := false;
+  dato_err := 0;
+  repeat
+    if not(argum[argu_n].dat[com] in validos)
+      then begin
+             set_chk  := false;
+             set_err  := true;
+             dato_err := com;
+             exit;
+           end
+      else com := com+1;
+  until com > length(argum[argu_n].dat);
+end;
+
+{>> comienzo de  ana_dat() <<}
+
+begin
+  if argum[argu_n].dat[com] in ['0'..'9','$','%','''','"']
+    then begin
+           case argum[argu_n].dat[com] of
+             '0'..
+             '9': if set_chk(argu_n,com,deci_set)
+                    then val(copy(argum[argu_n].dat,com,132),dato_val,dato_err);
+             '$': if set_chk(argu_n,com+1,hexa_set)
+                    then val(copy(argum[argu_n].dat,com,132),dato_val,dato_err);
+             '%': if set_chk(argu_n,com+1,['0','1'])
+                    then
+                      begin
+                        dato_err := 0;
+                        dato_val := 0;
+                        bit_1    := false;
+                        bit_l    := 0;
+                        bit_p    := com+1;
+                        repeat
+                          if argum[argu_n].dat[bit_p] = '1'
+                            then begin
+                                   bit_1    := true;
+                                   bit_l    := bit_l +1;
+                                   dato_val := (dato_val shl 1) or 1;
+                                 end
+                            else if bit_1
+                                   then begin
+                                          bit_l    := bit_l + 1;
+                                          dato_val := dato_val shl 1;
+                                        end;
+                          bit_p := bit_p +1;
+                        until (bit_p > length(argum[argu_n].dat)) or
+                              (bit_l = 16);
+                        if (bit_l = 16) and
+                           (bit_p <= length(argum[argu_n].dat))
+                          then dato_err := bit_p;
+                      end;
+             #39,
+             '"': begin
+                    dato_err := 0;
+                    if argum[argu_n].dat[com] = argum[argu_n].dat[com+1] { Null string }
+                      then dato_val := 0
+                      else dato_val := ord(argum[argu_n].dat[com+1]);
+                  end;
+           end;{case}
+
+           if dato_err <> 0
+             then begin
+                    if set_err
+                       then ana_dat := ERR { Este error se genero en el set_chk() }
+                       else ana_dat := OVF;{ Este error se genero en el val() }
+                    dato_err:= argum[argu_n].col+dato_err-1;
+                  end
+             else if (dato_val < 0) or (dato_val > addr_top)
+                    then ana_dat  := N16
+                    else if dato_val > dire_top
+                           then ana_dat := N11
+                           else ana_dat := N08;
+         end
+
+    else if (argum[argu_n].dat[com] in label_set1) and
+             set_chk(argu_n,com+1,label_set2)
+           then begin
+                  dato_nom := copy(argum[argu_n].dat,com,132);
+                  if buscaet(dato_nom,true)
+                    then begin
+                           dato_val := e_punt^.dat;
+                           ana_dat  := e_punt^.typ;
+                         end
+                    else  ana_dat := EID;
+                end
+           else begin
+                  ana_dat  := ERR;
+                  dato_err := argum[argu_n].col+com-1;
+                end;
+end;{ana_dat}

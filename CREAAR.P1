@@ -1,0 +1,41 @@
+{ | procedimiento CREAAR       Local de pasada_1 |
+  | Version: 1              Ultima mod.:20/11/87 |
+  |                                              |
+  | Crea un argumento de nombre (nombre) y tipo  |
+  | (tipo) ,el valor sera en el rango legal de   |
+  | addr_val.                                    |
+  | El 19/11/87 se agrago el tipo LAB y el       |
+  | puntero (.pnt) que apunta al label que       |
+  | oficia de resultado. Modifica el .sta del    |
+  | label.                                       |
+  | El 20/11 se agrego el campo ^.col .          |
+  |                                              | }
+
+procedure creaar(nombre :etiq_nom;columna: byte;valor :addr_val;tipo :argu_typ);
+begin
+  if a_base = NIL
+    then begin
+           new(a_punt);
+           a_base := a_punt;
+           a_last := a_punt;
+         end
+    else begin
+           a_last := a_punt;
+           new(a_punt);
+           a_last^.prx := a_punt;
+         end;
+  with a_punt^ do
+  begin
+    nom := nombre;
+    typ := tipo;
+    lin := linea_cnt;
+    col := columna;
+    prx := NIL;
+  end;{with}
+  if tipo = LAB
+    then begin
+           a_punt^.pnt := d_punt;
+           d_punt^.sta := false;
+         end
+    else a_punt^.adr := valor;
+end;{creaar}

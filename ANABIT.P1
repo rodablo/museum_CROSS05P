@@ -1,0 +1,36 @@
+{ | procedure ANA_BIT          Local de pasada_1 |
+  | Version: 1                  Creado: 18/11/87 |
+  |                         Ultima mod.:23/11/87 |
+  |                                              |
+  | Realiza el analisis de argum[1].dat si es    |
+  | NSH y dato_val esta entre 0..7 calcula junto |
+  | con la base del opcode, el opcode valido y lo|
+  | coloca en code_arr[loc[COD]], Si fuese label |
+  | guarda la base en code_arr[loc[COD]] y genera|
+  | argumento tipo BIT.                          |
+  | Genera: Error 16 = parametro OVF.            |
+  |         Error 17 = parametro ERR.            |
+  |         Error 21 = bit fuera de rango        |
+  |                                              | }
+
+procedure ana_bit;
+begin
+  case ana_dat(1,1) of
+    CHA,
+    N08: if dato_val <= 7
+           then code_arr[loc[COD]] := nemo_dat[nemo].op+
+                                      (2 * dato_val)
+           else error(21,false,argum[1].col);
+    E08,
+    E11,
+    E16,
+    EID: begin
+           code_arr[loc[COD]] := nemo_dat[nemo].op;
+           creaar(dato_nom,argum[1].col,loc[COD],BIT);
+         end;
+    N11,
+    N16: error(21,false,argum[1].col);
+    OVF: error(16,false,dato_err);
+    ERR: error(17,false,dato_err);
+  end;{case}
+end;{ana_bit}

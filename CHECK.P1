@@ -1,0 +1,81 @@
+{ | funcion CHECK()            Local de pasada_1 |
+  | Version: 1                  Creado: 18/11/87 |
+  |                        Ultima mod.: 25/11/87 |
+  |                                              |
+  | Chequea si el operando puede ejecutarse o    |
+  | analizarse en base a:                        |
+  |                                              |
+  | 1. Su modo valido (COD, DTA, o ambos).       |
+  | 2. Su offset (free[modo] tiene suficiente).  |
+  | 3. Tiene o No argumento (segun el caso) y    |
+  |    este es correcto y completo.              |
+  |                                              |
+  | Si todo esto es correcto retorna True,actua_ |
+  | liza code_off y si label_b crea label,si esta|
+  | repetido genera error(6) y label_b := false. |
+  | Si los parametros no coinciden con el estado |
+  | retorna false y la poscision del error en la |
+  | variable externa error_col.                  |
+  |                                              | }
+
+function check(tipo: mode_cnj;offset: byte;argu: boolean;argu_mi,argu_ma: byte):boolean;
+begin
+  check := false;
+  if not(modo in tipo) then begin
+                              error(10,true,opera_c);
+                              exit;
+                            end;
+  if full[modo] then begin
+                       error(11,true,opera_c);
+                       exit;
+                     end;
+  if offset > free[modo] then begin
+                                full[modo] := true;
+                                case offset of
+                                  1: error(11,true,opera_c);
+                                  2: if nemo_typ in [PSD]
+                                       then error(11,true,opera_c)
+                                       else error(11,true,argum[2].col);
+                                  3: error(11,true,argum[3].col);
+                                end;{case}
+                                exit;
+                              end;
+  if argu then if argum_b
+                 then begin
+                        if argum_e
+                          then begin
+                                 error(12,true,error_col); {argum[1].col);}
+                                 exit;
+                               end;
+                        if argu_mi > argum_num
+                          then begin
+                                 error(13,true,argum[argum_num].col+
+                                        length(argum[argum_num].dat));
+                                 exit;
+                               end;
+                        if argu_ma < argum_num
+                          then begin
+{ No es fatal }                  check := true;
+                                 error(18,false,argum[argu_ma].col+
+{ Usa argu_ma porque es el >> }         length(argum[argu_ma].dat));
+{ ultimo valido }               end
+                      end
+                 else if argu_mi <> 0  { puede no haber }
+                        then begin
+                               error(14,true,opera_c+length(opera));
+                               exit;
+                             end
+          else if argum_b then begin
+                                 check := true;  { No es fatal }
+                                 error(15,false,argum[1].col);
+                               end;
+  check    := true;
+  code_off := offset;
+  if label_b and not(nemo in [EQU,RMS]){ El EQU,RMS genera sus propios label's }
+    then if not(creaet(label_,loc[modo]))
+           then begin
+                  label_b   := false;
+                  error(6,false,label_c);
+                end;
+end;{check}
+

@@ -1,0 +1,156 @@
+{ | funcion ANA_ARG()          Local de pasada_1 |
+  | Version: 2                  Creado: 20/11/87 |
+  |                         Ultima mod.:23/11/87 |
+  |                                              |
+  | Realiza el analisis del argumento            |
+  |                                              | }
+
+function ana_arg(tipo: instr_typ):instr_dir;
+
+{ | funcion CHECKMEM()          Local de ana_arg |
+  | Version: 1                  Creado: 23/11/87 |
+  |                         Ultima mod.:23/11/87 |
+  |                                              |
+  | Chequea si hay lugar                         |
+  |                                              | }
+
+function checkmem(offset: byte):boolean;
+begin
+  if offset <= free[modo]
+    then begin
+           checkmem := true;
+           code_off := offset;
+         end
+    else begin
+           checkmem  := false;
+           full[COD] := true;
+           ana_arg   := MOVF;
+           if offset > 2 then error_col := argum[1].col+length(argum[1].dat)-1;
+         end;
+end;
+
+{ | procedure ANA_ARG1()        Local de ana_arg |
+  | Version: 1                  Creado: 20/11/87 |
+  |                         Ultima mod.:23/11/87 |
+  |                                              |
+  | Realiza el analisis del argumento            |
+  |                                              | }
+
+procedure ana_arg1(modo: boolean);
+var
+  com   : byte;
+  si_shr: instr_dir;
+  si_lng: instr_dir;
+begin
+  if modo
+    then begin
+           com := 0;
+           si_shr := DIR;
+           si_lng := EXT;
+         end
+    else begin
+           com := 1;
+           si_shr := X08;
+           si_lng := X16;
+         end;
+  case ana_dat(1,com+1) of
+    CHA,
+    N08: begin
+          ana_arg              := si_shr;
+          code_arr[loc[COD]+1] := lo(dato_val);
+        end;
+    E08: begin
+           ana_arg := si_shr;
+           creaar(dato_nom,argum[1].col+com,loc[COD]+1,A08);
+         end;
+    N11: if tipo = RME
+           then begin
+                  if checkmem(3)
+                    then begin
+                           ana_arg              := si_lng;
+                           code_arr[loc[COD]+1] := hi(dato_val);
+                           code_arr[loc[COD]+2] := lo(dato_val);
+                         end
+                end
+           else ana_arg  := SOVF;
+    E11: if tipo = RME
+           then begin
+                  if checkmem(3)
+                    then begin
+                           ana_arg  := si_lng;
+                           creaar(dato_nom,argum[1].col+com,loc[COD]+1,A11);
+                         end
+                end
+           else ana_arg  := SOVF;
+    EID: if tipo = RME
+           then begin
+                  if checkmem(3)
+                    then begin
+                           ana_arg := si_lng;
+                           creaar(dato_nom,argum[1].col+com,loc[COD]+1,A11);
+                         end
+                end
+           else begin
+                  ana_arg := si_shr;
+                  creaar(dato_nom,argum[1].col+com,loc[COD]+1,A08);
+                end;
+    N16,
+    E16: ana_arg := LOVF;
+    OVF: ana_arg := NOVF;
+    ERR: ana_arg := AERR;
+  end;{case}
+end;{ana_arg1}
+
+{>> ANA_ARG <<}
+
+begin
+  error_col := argum[1].col;                      { Fija la columna default }
+
+  if (argum[1].dat = 'A') or (argum[1].dat = 'X')
+    then begin
+           if tipo = RMO
+             then if argum[1].dat = 'A'
+                    then ana_arg := IHA
+                    else ana_arg := IHX
+             else ana_arg  := TERR;
+           exit;                                  { NO actualiza el code_off }
+         end;
+
+  if argum[1].dat = '^' then begin
+                               ana_arg := X00;
+                               exit;              { NO actualiza el code_off }
+                             end;
+
+  if not(checkmem(2)) then exit;
+
+  if argum[1].dat[1] = '#'
+    then begin
+           if tipo = RME
+             then begin
+                    case ana_dat(1,2) of
+                      CHA,
+                      N08: begin
+                             ana_arg              := INM;
+                             code_arr[loc[COD]+1] := dato_val;
+                           end;
+                      E08,
+                      E11,
+                      E16,
+                      EID: begin
+                             ana_arg := INM;
+                             creaar(dato_nom,argum[1].col+1,loc[COD]+1,A08);
+                           end;
+                      N11,
+                      N16: ana_arg := SOVF;
+                      OVF: ana_arg := NOVF;
+                      ERR: ana_arg := AERR;
+                    end;{case}
+                  end
+             else ana_arg := TERR;
+           exit;
+         end;
+
+  if argum[1].dat[1] = '^' then ana_arg1(false){ El false selecciona indexado }
+                           else ana_arg1(true) { El true selecciona DIR o EXT }
+end;{ana_arg}
+

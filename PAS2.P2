@@ -1,0 +1,103 @@
+procedure pasada_2;
+var
+  label_indef :boolean;
+
+{ | procedimiento ERROR2       Local de pasada_2 |
+  | Version: 1                  Creado: 20/11/87 |
+  |                         Ultima mod.:20/11/87 |
+  |                                              |
+  | Imprime el codigo de error y varios datos    |
+  |                                              | }
+
+procedure error2(error_cod: byte;fatal: boolean);
+var
+  tipo: char;
+begin
+ if fatal then begin
+                 error_fat := error_fat+1;
+                 tipo      := 'f';
+               end
+          else begin
+                 error_war := error_war+1;
+                 tipo      := 'e';
+               end;
+ writeln(tipo,error_cod:2,'[',a_punt^.lin:4,'/',a_punt^.col:3,']');
+
+end;
+
+begin
+  repeat
+    label_indef := false;
+    a_punt      := a_base;
+    while a_punt <> NIL do
+      begin
+        if a_punt^.typ = LAB                    { Si el arg es LAB }
+          then if buscaet(a_punt^.nom,false)    { Si el label fuente existe }
+                 then if e_punt^.sta            { si el fuente esta definido }
+                        then begin
+                               a_punt^.pnt^.dat := e_punt^.dat;
+                               a_punt^.pnt^.typ := e_punt^.typ;
+                               a_punt^.pnt^.sta := true;
+                             end
+                        else label_indef := true  { No esta definido }
+                 else begin
+                        error2(30,false);       { No existe }
+                        a_punt^.typ := PER;     { Marca el argu como perdido }
+                      end;
+        a_punt := a_punt^.prx;                  { No es LAB }
+      end;
+  until label_indef = false;              { No hay label's fuente indefinidos }
+
+  a_punt := a_base;
+  while a_punt <> NIL do
+    begin
+      if not(a_punt^.typ in [LAB,PER])
+      then
+        begin
+          if buscaet(a_punt^.nom,true)
+            then
+              case a_punt^.typ of
+                  A08: case e_punt^.typ of
+                         E08: code_arr[a_punt^.adr] :=  e_punt^.dat;
+                         E11: error2(22,false);
+                         E16: error2(19,false);
+                       end;{case}
+                  A11: case e_punt^.typ of
+                         E08,
+                         E11: begin
+                                code_arr[a_punt^.adr]   := hi(e_punt^.dat);
+                                code_arr[a_punt^.adr+1] := lo(e_punt^.dat);
+                              end;
+                         E16: error2(19,false);
+                       end;{case}
+                  A16: begin
+                         code_arr[a_punt^.adr]   := hi(e_punt^.dat);
+                         code_arr[a_punt^.adr+1] := lo(e_punt^.dat);
+                       end;
+                  REL: case e_punt^.typ of
+                         E08,
+                         E11: if offset(a_punt^.adr,e_punt^.dat)
+                                then code_arr[a_punt^.adr] := offset_dat
+                                else error2(20,false);
+                         E16: error2(19,false);
+                       end;{case}
+                  BIT: if e_punt^.dat <= 7
+                         then code_arr[a_punt^.adr] := code_arr[a_punt^.adr] +
+                                                       2 * e_punt^.dat
+                         else error2(21,false);
+              end {case}
+            else error2(30,false);
+        end;
+      a_punt := a_punt^.prx;
+    end;
+    if objeto_b
+      then begin
+             assign(objeto,fuente_nom+'.OBJ');
+             {$I-}
+             rewrite(objeto);
+             blockwrite(objeto,code_arr,16);
+             close(objeto);
+             {$I+}
+             checkio;
+           end;
+end;{pasada_2}
